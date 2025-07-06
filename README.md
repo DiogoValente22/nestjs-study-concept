@@ -23,7 +23,7 @@ O objetivo é estudar, testar e aprender sobre NestJS e BullMQ
 ## 📦 O que já foi implementado para os estudos
 
 - Estrutura modular
-- CRUD completo para usuários:
+- CRUD completo para usuários
 - DTOs com validações (nome, e-mail, senha forte)
 - Integração com MongoDB
 - Projeto containerizado com Docker (`backend` + `mongodb`)
@@ -31,7 +31,7 @@ O objetivo é estudar, testar e aprender sobre NestJS e BullMQ
 
 ---
 
-## 📌 O que ainda será feito ainda
+## 📌 O que ainda será estudado
 
 - Integração com **BullMQ** e **Redis**
 - Hash de senhas / segurança no geral
