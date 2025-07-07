@@ -28,12 +28,13 @@ O objetivo é estudar, testar e aprender sobre NestJS e BullMQ
 - Integração com MongoDB
 - Projeto containerizado com Docker (`backend` + `mongodb`)
 - Uso de variáveis de ambiente via `.env`
+- Integração com **BullMQ** e **Redis**
+- Job usando BullMQ e Redis, simulando envio de email de boas vindas após cadastro de usuário
 
 ---
 
 ## 📌 O que ainda será estudado
 
-- Integração com **BullMQ** e **Redis**
 - Hash de senhas / segurança no geral
 - Middleware de autenticação com **JWT**
 - Tratamento global de erros com `ExceptionFilter`
