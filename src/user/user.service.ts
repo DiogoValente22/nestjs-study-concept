@@ -5,14 +5,27 @@ import { User, UserDocument } from './schemas/user.schema';
 import { CreateUserDTO } from './dto/create-user.dto';
 import { UpdatePutUserDTO } from './dto/update-put-user.dto';
 import { UpdatePatchUserDTO } from './dto/update-patch-user.dto';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 @Injectable()
 export class UserService {
-  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
+  constructor(
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+    @InjectQueue('user-welcome') private readonly welcomeQueue: Queue,
+  ) {}
 
   async create(createUserDTO: CreateUserDTO): Promise<User> {
     const createdUser = new this.userModel(createUserDTO);
-    return await createdUser.save();
+    const user = await createdUser.save();
+
+    // Adiciono job de boas vindas
+    await this.welcomeQueue.add('send-welcome-email', {
+      email: user.email,
+      name: user.name,
+    });
+
+    return user;
   }
 
   async findAll() {
