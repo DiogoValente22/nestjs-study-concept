@@ -8,13 +8,20 @@ import {
   Body,
   Param,
   UseInterceptors,
+  UseGuards,
 } from '@nestjs/common';
 import { CreateUserDTO } from './dto/create-user.dto';
 import { UpdatePutUserDTO } from './dto/update-put-user.dto';
 import { UpdatePatchUserDTO } from './dto/update-patch-user.dto';
 import { UserService } from './user.service';
-import { LogInterceptor } from 'src/interceptors/log.interceptor';
+import { LogInterceptor } from 'src/common/interceptors/log.interceptor';
+import { Roles } from 'src/common/decorators/role.decorator';
+import { Role } from 'src/common/enums/role.enums';
+import { RoleGuard } from 'src/common/guards/role.guards';
+import { AuthGuard } from 'src/auth/guards/auth.guard';
 
+@Roles(Role.Admin)
+@UseGuards(AuthGuard, RoleGuard)
 @UseInterceptors(LogInterceptor)
 @Controller('user')
 export class UserController {
@@ -23,6 +30,11 @@ export class UserController {
   @Get()
   async getAllUsers() {
     return await this.userService.findAll();
+  }
+
+  @Get(':id')
+  async getUserById(@Param('id') id: string) {
+    return await this.userService.findById(id);
   }
 
   @Post()

@@ -12,6 +12,7 @@ import { UpdatePutUserDTO } from './dto/update-put-user.dto';
 import { UpdatePatchUserDTO } from './dto/update-patch-user.dto';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import * as bcryptjs from 'bcryptjs';
 
 @Injectable()
 export class UserService {
@@ -22,7 +23,14 @@ export class UserService {
     @InjectQueue('user-welcome') private readonly welcomeQueue: Queue,
   ) {}
 
-  async create(createUserDTO: CreateUserDTO): Promise<User> {
+  async create(createUserDTO: CreateUserDTO): Promise<UserDocument> {
+    const bcryptSalt = await bcryptjs.genSalt();
+
+    createUserDTO.password = await bcryptjs.hash(
+      createUserDTO.password,
+      bcryptSalt,
+    );
+
     const createdUser = new this.userModel(createUserDTO);
     const user = await createdUser.save();
 
@@ -44,8 +52,30 @@ export class UserService {
     }
   }
 
+  async findById(id: string): Promise<User> {
+    try {
+      const user = await this.userModel.findById(id).exec();
+      if (!user) throw new NotFoundException('Usuário não encontrado');
+
+      return user;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      this.logger.error('Erro ao buscar usuário.', error);
+      throw new InternalServerErrorException('Erro ao buscar usuário.');
+    }
+  }
+
   async updateFull(id: string, updateUserDTO: UpdatePutUserDTO): Promise<User> {
     try {
+      const bcryptSalt = await bcryptjs.genSalt();
+
+      updateUserDTO.password = await bcryptjs.hash(
+        updateUserDTO.password,
+        bcryptSalt,
+      );
+
       const updatedFullUser = await this.userModel
         .findByIdAndUpdate(id, updateUserDTO, { new: true })
         .exec();
@@ -66,6 +96,12 @@ export class UserService {
 
   async updatePartial(id: string, updatePatchUserDTO: UpdatePatchUserDTO) {
     try {
+      const bcryptSalt = await bcryptjs.genSalt();
+
+      updatePatchUserDTO.password = await bcryptjs.hash(
+        updatePatchUserDTO.password,
+        bcryptSalt,
+      );
       const updatedPartialUser = await this.userModel
         .findByIdAndUpdate(id, updatePatchUserDTO, { new: true })
         .exec();

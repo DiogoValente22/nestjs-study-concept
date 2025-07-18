@@ -1,12 +1,18 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import {
+  forwardRef,
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { MongooseModule } from '@nestjs/mongoose';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
 import { User, UserSchema } from './schemas/user.schema';
 import { UserWelcomeProcessor } from './jobs/user-welcome.processor';
-import { UserIdCheckMiddleware } from 'src/middlewares/user-id-check.middleware';
-import { RequestMethod } from '@nestjs/common';
+import { UserIdCheckMiddleware } from 'src/common/middlewares/user-id-check.middleware';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
   imports: [
@@ -14,10 +20,11 @@ import { RequestMethod } from '@nestjs/common';
     BullModule.registerQueue({
       name: 'user-welcome',
     }),
+    forwardRef(() => AuthModule),
   ],
   controllers: [UserController],
   providers: [UserService, UserWelcomeProcessor],
-  exports: [],
+  exports: [UserService, MongooseModule],
 })
 export class UserModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
