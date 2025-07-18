@@ -3,6 +3,8 @@ import {
   InternalServerErrorException,
   NotFoundException,
   Logger,
+  ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -24,28 +26,42 @@ export class UserService {
   ) {}
 
   async create(createUserDTO: CreateUserDTO): Promise<UserDocument> {
+    const isUniqueEmail = await this.userModel.findOne({
+      email: createUserDTO.email,
+    });
+    if (isUniqueEmail) throw new ConflictException('e-mail já cadastrado');
+
     const bcryptSalt = await bcryptjs.genSalt();
 
-    createUserDTO.password = await bcryptjs.hash(
+    const hashedPassword = await bcryptjs.hash(
       createUserDTO.password,
       bcryptSalt,
     );
 
-    const createdUser = new this.userModel(createUserDTO);
-    const user = await createdUser.save();
-
-    // Adiciono job de boas vindas
-    await this.welcomeQueue.add('send-welcome-email', {
-      email: user.email,
-      name: user.name,
+    const createdUser = new this.userModel({
+      ...createUserDTO,
+      password: hashedPassword,
     });
 
-    return user;
+    try {
+      const user = await createdUser.save();
+
+      // simulação job - envio de email de boas vindas
+      await this.welcomeQueue.add('send-welcome-email', {
+        email: user.email,
+        name: user.name,
+      });
+
+      return user;
+    } catch (error) {
+      console.log('error create', error);
+      throw new InternalServerErrorException('Erro ao criar usuário');
+    }
   }
 
   async findAll() {
     try {
-      return await this.userModel.find().exec();
+      return await this.userModel.find().select('-password').exec();
     } catch (error) {
       this.logger.error('Erro ao buscar usuários.', error);
       throw new InternalServerErrorException('Erro ao buscar usuários.');
@@ -54,7 +70,8 @@ export class UserService {
 
   async findById(id: string): Promise<User> {
     try {
-      const user = await this.userModel.findById(id).exec();
+      const user = await this.userModel.findById(id).select('-password').exec();
+
       if (!user) throw new NotFoundException('Usuário não encontrado');
 
       return user;
@@ -62,31 +79,47 @@ export class UserService {
       if (error instanceof NotFoundException) {
         throw error;
       }
+
       this.logger.error('Erro ao buscar usuário.', error);
       throw new InternalServerErrorException('Erro ao buscar usuário.');
     }
   }
 
+  // Apenas teste para usar PUT
   async updateFull(id: string, updateUserDTO: UpdatePutUserDTO): Promise<User> {
     try {
-      const bcryptSalt = await bcryptjs.genSalt();
+      if (updateUserDTO.email) {
+        throw new ForbiddenException('E-mail não pode ser alterado');
+      }
 
-      updateUserDTO.password = await bcryptjs.hash(
+      const bcryptSalt = await bcryptjs.genSalt();
+      const hashedPassword = await bcryptjs.hash(
         updateUserDTO.password,
         bcryptSalt,
       );
 
-      const updatedFullUser = await this.userModel
-        .findByIdAndUpdate(id, updateUserDTO, { new: true })
+      const updatedUser = await this.userModel
+        .findByIdAndUpdate(
+          id,
+          {
+            ...updateUserDTO,
+            password: hashedPassword,
+          },
+          { new: true },
+        )
+        .select('-password')
         .exec();
 
-      if (!updatedFullUser) {
+      if (!updatedUser) {
         throw new NotFoundException(`Usuário com id ${id} não encontrado.`);
       }
 
-      return updatedFullUser;
+      return updatedUser;
     } catch (error) {
-      if (error instanceof NotFoundException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ConflictException
+      ) {
         throw error;
       }
       this.logger.error('Erro ao atualizar usuário.', error);
@@ -96,14 +129,24 @@ export class UserService {
 
   async updatePartial(id: string, updatePatchUserDTO: UpdatePatchUserDTO) {
     try {
-      const bcryptSalt = await bcryptjs.genSalt();
+      if (updatePatchUserDTO.email) {
+        throw new ForbiddenException('E-mail não pode ser alterado');
+      }
 
-      updatePatchUserDTO.password = await bcryptjs.hash(
-        updatePatchUserDTO.password,
-        bcryptSalt,
-      );
+      const updateData = { ...updatePatchUserDTO };
+
+      if (updatePatchUserDTO.password) {
+        const bcryptSalt = await bcryptjs.genSalt();
+        const hashedPassword = await bcryptjs.hash(
+          updatePatchUserDTO.password,
+          bcryptSalt,
+        );
+        updateData.password = hashedPassword;
+      }
+
       const updatedPartialUser = await this.userModel
-        .findByIdAndUpdate(id, updatePatchUserDTO, { new: true })
+        .findByIdAndUpdate(id, updateData, { new: true })
+        .select('-password')
         .exec();
 
       if (!updatedPartialUser) {
@@ -112,7 +155,10 @@ export class UserService {
 
       return updatedPartialUser;
     } catch (error) {
-      if (error instanceof NotFoundException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
         throw error;
       }
 
@@ -129,7 +175,7 @@ export class UserService {
         throw new NotFoundException(`Usuário com id ${id} não encontrado.`);
       }
 
-      return deletedUser;
+      return { message: 'Usuário deletado com sucesso.' };
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;
