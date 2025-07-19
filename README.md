@@ -2,7 +2,7 @@
 
 Este é um projeto de **estudo e familiarização com o NestJS**, utilizando MongoDB e BullMQ.
 
-O objetivo é estudar, testar e aprender sobre NestJS e BullMQ
+O objetivo é estudar e aprender sobre os fundamentos do Nest e BullMQ
 
 ---
 
@@ -20,27 +20,28 @@ O objetivo é estudar, testar e aprender sobre NestJS e BullMQ
 
 ---
 
-## 📦 O que já foi implementado para os estudos
+## 📦 O que já estudei até agora nesse projeto
 
 - Estrutura modular
 - CRUD completo para usuários
 - DTOs com validações (nome, e-mail, senha forte)
 - Integração com MongoDB
 - Projeto containerizado com Docker (`backend` + `mongodb`)
-- Uso de variáveis de ambiente via `.env`
 - Integração com **BullMQ** e **Redis**
 - Job usando BullMQ e Redis, simulando envio de email de boas vindas após cadastro de usuário
+- Hash de senhas, CORS, rate limiting / segurança no geral
+- autenticação com **JWT**
+- Tratamento global de erros com `ExceptionFilter`
+- Aplicação prática de Pipes, Interceptors, Guards e Middlewares
 
 ---
 
 ## 📌 O que ainda será estudado
 
-- Hash de senhas / segurança no geral
-- Middleware de autenticação com **JWT**
-- Tratamento global de erros com `ExceptionFilter`
-- Aplicação prática de Pipes, Interceptors, Guards e Middlewares
 - Testes automatizados (unitários e e2e)
-- Refatoração para estrutura por domínio/contexto
+- Envio de email real, não apenas simulação
+- Manipulação de arquivos
+-  Refatoração/criação de outro projeto mas com foco em DDD, Clean Architecture e Design Patterns
 
 ## Installation
 
