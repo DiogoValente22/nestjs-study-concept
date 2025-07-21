@@ -46,7 +46,7 @@ export class UserService {
     try {
       const user = await createdUser.save();
 
-      // simulação job - envio de email de boas vindas
+      // Envio de email na fila
       await this.welcomeQueue.add('send-welcome-email', {
         email: user.email,
         name: user.name,
