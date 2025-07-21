@@ -20,8 +20,8 @@ import { Role } from 'src/common/enums/role.enums';
 import { RoleGuard } from 'src/common/guards/role.guards';
 import { AuthGuard } from 'src/auth/guards/auth.guard';
 
-@Roles(Role.Admin)
-@UseGuards(AuthGuard, RoleGuard)
+// @Roles(Role.Admin)
+// @UseGuards(AuthGuard, RoleGuard)
 @UseInterceptors(LogInterceptor)
 @Controller('user')
 export class UserController {

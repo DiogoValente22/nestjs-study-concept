@@ -5,7 +5,6 @@ import {
   NestModule,
   RequestMethod,
 } from '@nestjs/common';
-import { BullModule } from '@nestjs/bullmq';
 import { MongooseModule } from '@nestjs/mongoose';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
@@ -13,14 +12,13 @@ import { User, UserSchema } from './schemas/user.schema';
 import { UserWelcomeProcessor } from './jobs/user-welcome.processor';
 import { UserIdCheckMiddleware } from 'src/common/middlewares/user-id-check.middleware';
 import { AuthModule } from 'src/auth/auth.module';
+import { SendEmailModule } from 'src/send-email/send-email.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
-    BullModule.registerQueue({
-      name: 'user-welcome',
-    }),
     forwardRef(() => AuthModule),
+    forwardRef(() => SendEmailModule),
   ],
   controllers: [UserController],
   providers: [UserService, UserWelcomeProcessor],

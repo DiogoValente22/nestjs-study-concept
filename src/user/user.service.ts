@@ -12,9 +12,8 @@ import { User, UserDocument } from './schemas/user.schema';
 import { CreateUserDTO } from './dto/create-user.dto';
 import { UpdatePutUserDTO } from './dto/update-put-user.dto';
 import { UpdatePatchUserDTO } from './dto/update-patch-user.dto';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
 import * as bcryptjs from 'bcryptjs';
+import { SendEmailService } from 'src/send-email/send-email.service';
 
 @Injectable()
 export class UserService {
@@ -22,7 +21,7 @@ export class UserService {
 
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
-    @InjectQueue('user-welcome') private readonly welcomeQueue: Queue,
+    private readonly sendEmailService: SendEmailService,
   ) {}
 
   async create(createUserDTO: CreateUserDTO): Promise<UserDocument> {
@@ -46,11 +45,16 @@ export class UserService {
     try {
       const user = await createdUser.save();
 
-      // Envio de email na fila
-      await this.welcomeQueue.add('send-welcome-email', {
-        email: user.email,
-        name: user.name,
-      });
+      // Envio de email na fila antigo
+      // await this.welcomeQueue.add('send-welcome-email', {
+      //   email: user.email,
+      //   name: user.name,
+      // });
+
+      // novo
+      console.log('antes do sendemailService dentro de user');
+      await this.sendEmailService.sendWelcomeEmail(user.email, user.name);
+      console.log('depois do sendemailService dentro de user');
 
       return user;
     } catch (error) {
