@@ -45,16 +45,8 @@ export class UserService {
     try {
       const user = await createdUser.save();
 
-      // Envio de email na fila antigo
-      // await this.welcomeQueue.add('send-welcome-email', {
-      //   email: user.email,
-      //   name: user.name,
-      // });
-
-      // novo
-      console.log('antes do sendemailService dentro de user');
+      // Envio de email de boas vindas - Fila
       await this.sendEmailService.sendWelcomeEmail(user.email, user.name);
-      console.log('depois do sendemailService dentro de user');
 
       return user;
     } catch (error) {
