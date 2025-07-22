@@ -4,12 +4,18 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { PugAdapter } from '@nestjs-modules/mailer/dist/adapters/pug.adapter';
 import { SendEmailService } from './send-email.service';
 import { WelcomeProcessor } from './jobs/welcome.processor';
+import { ForgetPasswordProcessor } from './jobs/forget-password.processor';
 
 @Module({
   imports: [
-    BullModule.registerQueue({
-      name: 'welcome',
-    }),
+    BullModule.registerQueue(
+      {
+        name: 'welcome',
+      },
+      {
+        name: 'forget-password',
+      },
+    ),
     MailerModule.forRoot({
       transport: {
         host: process.env.EMAIL_HOST,
@@ -31,7 +37,7 @@ import { WelcomeProcessor } from './jobs/welcome.processor';
       },
     }),
   ],
-  providers: [SendEmailService, WelcomeProcessor],
+  providers: [SendEmailService, WelcomeProcessor, ForgetPasswordProcessor],
   exports: [SendEmailService],
 })
 export class SendEmailModule {}

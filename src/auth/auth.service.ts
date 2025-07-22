@@ -3,9 +3,10 @@ import { AuthForgetDTO } from './dto/auth-forget.dto';
 import {
   BadRequestException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { JwtService, JwtSignOptions, TokenExpiredError } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from 'src/user/schemas/user.schema';
 import { Model } from 'mongoose';
@@ -14,30 +15,35 @@ import { AuthRegisterDTO } from './dto/auth-register.dto';
 import { UserService } from 'src/user/user.service';
 import { AuthCheckTokenDTO } from './dto/auth-check-token.dto';
 import * as bcrypt from 'bcrypt';
+import { SendEmailService } from 'src/send-email/send-email.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly userService: UserService,
+    private readonly sendEmailService: SendEmailService,
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {}
 
-  async createToken(user: UserDocument) {
+  async createToken(user: UserDocument, options?: JwtSignOptions) {
     const payload = {
       sub: user._id.toString(),
       name: user.name,
       email: user.email,
     };
 
-    const jwtConfig = {
+    const defaultOptions = {
       expiresIn: '7 days',
       issuer: 'login',
       audience: 'users',
     };
 
     return {
-      accessToken: this.jwtService.sign(payload, jwtConfig),
+      accessToken: this.jwtService.sign(payload, {
+        ...defaultOptions,
+        ...options,
+      }),
     };
   }
 
@@ -89,30 +95,67 @@ export class AuthService {
     const { email } = authForgetDTO;
     const user = await this.userModel.findOne({ email }).exec();
 
-    if (!user) {
-      throw new UnauthorizedException('Email e/ou senha inválidos.');
+    if (user) {
+      const token = await this.createToken(user, {
+        expiresIn: '15m',
+        issuer: 'reset',
+        audience: 'users',
+      });
+
+      const link = `http://localhost:3000/reset?token=${token.accessToken}`;
+
+      // Envio de email forget password
+      await this.sendEmailService.sendForgetPasswordEmail(
+        email,
+        user.name,
+        link,
+      );
     }
 
-    // TO-DO: simular envio de email com BullMQ
-
-    return true;
+    return {
+      message:
+        'Se o e-mail informado estiver cadastrado, enviaremos instruções de recuperação.',
+    };
   }
 
   async reset(authResetDTO: AuthResetDTO) {
-    // TO-DO: validar token - sem validações e exceptions, por enquanto.
-    const { password, token } = authResetDTO;
-    const id = '123';
+    const { newPassword, token } = authResetDTO;
+
+    let payload: { sub: string };
+    try {
+      payload = this.jwtService.verify(token, {
+        issuer: 'reset',
+        audience: 'users',
+      });
+    } catch (e) {
+      if (e instanceof TokenExpiredError) {
+        throw new UnauthorizedException(
+          'Token expirado. Solicite um novo link de redefinição.',
+        );
+      }
+      throw new UnauthorizedException('Token inválido ou expirado');
+    }
+
+    const userId = payload.sub;
+
+    const bcryptSalt = await bcrypt.genSalt();
+    const hashedPassword = await bcrypt.hash(newPassword, bcryptSalt);
+
     const updateUserPassword = await this.userModel.findByIdAndUpdate(
-      id,
-      { password },
+      userId,
+      { password: hashedPassword },
       { new: true },
     );
 
     if (!updateUserPassword) {
-      console.log('TO-DO: validações futuras...', token);
+      throw new NotFoundException(
+        'Houve um erro ao resetar a senha. Tente novamente.',
+      );
     }
 
-    return this.createToken(updateUserPassword);
+    return {
+      message: 'Senha redefinida com sucesso. Faça login com sua nova senha.',
+    };
   }
 
   async register(authRegisterDTO: AuthRegisterDTO) {
